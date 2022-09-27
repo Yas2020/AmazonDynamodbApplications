@@ -23,14 +23,20 @@ It is basically a relational data structure with dragons of different types, hav
 
 
 Load data: 
-1 - Create a python environment : 
+	
+	1 - Create a python environment : 
 			pyhton -m venv /path/to/venv 
 Then activate it: 
+
 			source path/to/venv/bin/activate
-2 - install aws sdk for python: 
+	
+	2 - install aws sdk for python: 
 			pip install boto3
-3 - SAM CLI: 
+			
+	3 - SAM CLI: 
 			pip install sam
-4 - Configure the environment with AWS Access Key ID, AWS Secret Access Key and Default region name 
-5 - Host the static website on S3:  
+			
+	4 - Configure the environment with AWS Access Key ID, AWS Secret Access Key and Default region name 
+	5 - Host the static website on S3:  
 			aws s3 cp /path/to/website s3://$MYBUCKET/website  --recursive
+
