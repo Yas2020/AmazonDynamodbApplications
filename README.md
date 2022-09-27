@@ -39,4 +39,14 @@ Then activate it:
 	4 - Configure the environment with AWS Access Key ID, AWS Secret Access Key and Default region name 
 	5 - Host the static website on S3:  
 			aws s3 cp /path/to/website s3://$MYBUCKET/website  --recursive
+	6 - run create_multiple_tables.py to create tables concurrently, and then seed_dragons.py to batch-write itmes into tables using the given json files
+Before we operate our first lambda fucntion, we would create a user table and session table so we allow only registered users to login or give special editing previllage to some users such as admin. Every time a user logs in, a token is generated and recorded in session table that expires in 20 mins. This is doen by activating Time To Live feature for session table. 
+	7 - Using Amazon Lmabda console or sam cli, create a lamnda function in Amazon Lambda with script DragonSearch.py. This will serve our website with basic need of search for dragon name or scan the entire table.
+	 	aws lambda create-function --function-name DragonSearch \
+					   --runtime python3.9  \
+					   --role $ROLE_ARN_READ \
+					   --handler DragonSearch.lambda_handler \
+					   --publish \
+					   --zip-file fileb://DragonSearch.zip
+A lambda function can aslo be invoked using sam cli. But it is easier to test the function
 
