@@ -24,29 +24,71 @@ It is basically a relational data structure with dragons of different types, hav
 
 Load data: 
 	
-	1 - Create a python environment : 
+   1 - Create a python environment :
+   
 			pyhton -m venv /path/to/venv 
 Then activate it: 
 
 			source path/to/venv/bin/activate
 	
-	2 - install aws sdk for python: 
+   2 - install aws sdk for python:
+    
 			pip install boto3
 			
-	3 - SAM CLI: 
+   3 - SAM CLI: 
+   
 			pip install sam
 			
-	4 - Configure the environment with AWS Access Key ID, AWS Secret Access Key and Default region name 
-	5 - Host the static website on S3:  
+   4 - Configure the environment with AWS Access Key ID, AWS Secret Access Key and Default region name 
+   
+   5 - Host the static website on S3: 
+   
 			aws s3 cp /path/to/website s3://$MYBUCKET/website  --recursive
-	6 - run create_multiple_tables.py to create tables concurrently, and then seed_dragons.py to batch-write itmes into tables using the given json files
-Before we operate our first lambda fucntion, we would create a user table and session table so we allow only registered users to login or give special editing previllage to some users such as admin. Every time a user logs in, a token is generated and recorded in session table that expires in 20 mins. This is doen by activating Time To Live feature for session table. 
-	7 - Using Amazon Lmabda console or sam cli, create a lamnda function in Amazon Lambda with script DragonSearch.py. This will serve our website with basic need of search for dragon name or scan the entire table.
-	 	aws lambda create-function --function-name DragonSearch \
+   6 - run 
+   	
+			create_multiple_tables.py 
+to create tables concurrently, and then 
+
+			seed_dragons.py 
+to batch-write itmes into tables using the provided json files.
+
+Before we deploy our first lambda fucntion, we create a user table and a session table so we allow only registered users to login or give special editing previlage to some users only, that is the admin in our case. Every time a user logs in, a token is generated and sent to the front end and also recorded in session table. This token expires in 20 mins. This is done by activating Time To Live feature for session table. So enable TTL for the session table:
+
+   7 - run
+   
+	    create_user_table_and_index.py
+	    create_sessions_table.py
+	    enable_ttl.py
+
+   8 - Populate the user table containing the passwords provide in user.json file. Passwords are hashed using python module bcrypt. 
+   	
+	    upload_and_hash_passwords.py
+	    
+   9 - Lambda function that is responsible for login functionality is "login.py". It take user_email_address and password as input, gets confirmation from users. table in dynamodb, also checks if the user is admin or not. If paased, it returns user_name and a token to the frontend and lets the user in. We can test our lambda function before moving forward: 
+   
+   	python3 login.py test dave@dragoncardgame001.com coffee
+	
+   10 - Lets package our lambda function "login.py" and deploy it to Amazon Lambda. The neccessary dependency is bcrypt used for hashing. So our function needs to be packaged in a folder called package and then zipped to file name "login.zip" before uploading.
+   
+   		pip install -t package bcrypt
+		cd package
+		zip -r ../login.zip .
+		cd ..
+		zip -g login.zip login.py
+Note that packaging process is better to be done using a Linux machine that creates the same binary as the ones which run Amazon Lambda (Linux 2). I used Cloud9 (create a new python env and so on) for packaging at this stage as I could not successfully do it on my macbook air. One can now use aws sdk to deploy our lambda function to Lambda service. 
+
+		python3 create_and_publish_login.py
+or sma cli:
+
+	 	aws lambda create-function --function-name LoginEdXDragonGame \
 					   --runtime python3.9  \
 					   --role $ROLE_ARN_READ \
-					   --handler DragonSearch.lambda_handler \
+					   --handler login.lambda_handler \
 					   --publish \
-					   --zip-file fileb://DragonSearch.zip
-A lambda function can aslo be invoked using sam cli. But it is easier to test the function
+					   --zip-file fileb://path/to/login.zip
+A lambda function can aslo be invoked using sam cli. But it is easier to test the function on Lambda console for me.
+   
+   11 - Using Lambda console, create a new lambda function called DragonSearch and paste the content of `dragon_search.py`. From Amazon API Gateway, create REST API called "DragoneSearchAPI". At the root of API, create a post method with lambda function as its integration type and choose DragonSearch as its function.  
+
+
 
