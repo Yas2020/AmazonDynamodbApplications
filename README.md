@@ -4,22 +4,22 @@ In the project, I build a simple CRUD application using Amazon API Gateway, Amaz
 
 It is basically a relational data structure with dragons of different types, having different skills and modifiers. However we want to use DynamoDB to store this data (4 JSON files), and leverage that to display card data on the website as part of an online game. We need a script that can upload multiple items to multiple tables using batch processing. We decide to create a table for each JSON file:
 
-1- Dragon Stats Table: using dragon name as the Primary Key (PK) as you will want to search for a dragon by name.
+   - Dragon Stats Table: using dragon name as the Primary Key (PK) as you will want to search for a dragon by name.
 
-	 dragon_name   damage      description      protection     family      location_country    location_city   location_state    Location_neighborhood
- 	  cassidiuma    9            Amazing          3             red            usa               las vegas        nevada          spring valley dragon
-
-
-2- Dragon Bonus Attack Table: as we might want to search for details on a type of breath_attack, we choose that as our primary key for this table. Also we think it would be nice to see if an attack is "in range", so we add a sort key on range to find out if say "a water attack is in range to do damage".
-
-	breath_attack(PK)       description     extra_damage     range (SK)
-	       acid             spews acid            3               5
+    	  dragon_name   damage     description      protection     family     location_country    location_city   location_state    Location_neighborhood
+ 	    cassidiuma     9          Amazing            3           red            usa               las vegas        nevada         spring valley dragon
 
 
-3- Dragon Family Table: later on in the game engine, we will likely need to be able to bring up information about modifiers relating to the dragon type (family). We decide to use family as the Primary Key (PK).
+   - Dragon Bonus Attack Table: as we might want to search for details on a type of breath_attack, we choose that as our primary key for this table. Also we think it would be nice to see if an attack is "in range", so we add a sort key on range to find out if say "a water attack is in range to do damage".
+
+	breath_attack(PK)      description     extra_damage     range (SK)
+	       acid             spews acid           3               5
+
+
+   - Dragon Family Table: later on in the game engine, we will likely need to be able to bring up information about modifiers relating to the dragon type (family). We decide to use family as the Primary Key (PK).
 
 	breath_attack		 damage_modifier		description		family(PK) 	protection_modifier
-	    acid			-2		       Better defense               green               2
+	    acid			-2		       Better defense             green                  2
 
 
 Load data: 
@@ -31,7 +31,7 @@ Then activate it:
 
 			source path/to/venv/bin/activate
 	
-   2 - install aws sdk for python:
+   2 - Install aws sdk for python:
     
 			pip install boto3
 			
@@ -44,7 +44,7 @@ Then activate it:
    5 - Host the static website on S3: 
    
 			aws s3 cp /path/to/website s3://$MYBUCKET/website  --recursive
-   6 - run 
+   6 - Run 
    	
 			create_multiple_tables.py 
 to create tables concurrently, and then 
@@ -54,19 +54,23 @@ to batch-write itmes into tables using the provided json files.
 
 Before we deploy our first lambda fucntion, we create a user table and a session table so we allow only registered users to login or give special editing previlage to some users only, that is the admin in our case. Every time a user logs in, a token is generated and sent to the front end and also recorded in session table. This token expires in 20 mins. This is done by activating Time To Live feature for session table. So enable TTL for the session table:
 
-   7 - run
+   7 - Run
    
 	    create_user_table_and_index.py
 	    create_sessions_table.py
 	    enable_ttl.py
+	    
+Users table has GSI with its index as user_email_address. We search users by their emails in users table. 
 
    8 - Populate the user table containing the passwords provide in user.json file. Passwords are hashed using python module bcrypt. 
    	
 	    upload_and_hash_passwords.py
 	    
-   9 - Lambda function that is responsible for login functionality is "login.py". It take user_email_address and password as input, gets confirmation from users. table in dynamodb, also checks if the user is admin or not. If paased, it returns user_name and a token to the frontend and lets the user in. We can test our lambda function before moving forward: 
+   9 - Lambda function that is responsible for login functionality is "login.py". It take user_email_address and password as input, gets confirmation from 
+   users. table in dynamodb, also checks if the user is admin or not. If paased, it returns user_name and a token to the frontend and lets the user in. We 
+   can test our lambda function before moving forward: 
    
-   	python3 login.py test dave@dragoncardgame001.com coffee
+   	    python3 login.py test dave@dragoncardgame001.com coffee
 	
    10 - Lets package our lambda function "login.py" and deploy it to Amazon Lambda. The neccessary dependency is bcrypt used for hashing. So our function needs to be packaged in a folder called package and then zipped to file name "login.zip" before uploading.
    
@@ -75,7 +79,10 @@ Before we deploy our first lambda fucntion, we create a user table and a session
 		zip -r ../login.zip .
 		cd ..
 		zip -g login.zip login.py
-Note that packaging process is better to be done using a Linux machine that creates the same binary as the ones which run Amazon Lambda (Linux 2). I used Cloud9 (create a new python env and so on) for packaging at this stage as I could not successfully do it on my macbook air. One can now use aws sdk to deploy our lambda function to Lambda service. 
+		
+Note that packaging process is better to be done using a Linux machine that creates the same binary as the ones which run Amazon Lambda (Linux 2). I used 
+Cloud9 (create a new python env and so on) for packaging at this stage as I could not successfully do it on my macbook air. One can now use aws sdk to 
+deploy our lambda function to Lambda service. 
 
 		python3 create_and_publish_login.py
 or sma cli:
@@ -88,7 +95,22 @@ or sma cli:
 					   --zip-file fileb://path/to/login.zip
 A lambda function can aslo be invoked using sam cli. But it is easier to test the function on Lambda console for me.
    
-   11 - Using Lambda console, create a new lambda function called DragonSearch and paste the content of `dragon_search.py`. From Amazon API Gateway, create REST API called "DragoneSearchAPI". At the root of API, create a post method with lambda function as its integration type and choose DragonSearch as its function.  
+   11 - Using Lambda console, create a new lambda function called DragonSearch and paste the content of `dragon_search.py`. At the root of our API, create 
+   a post method with lambda function as its integration type and choose DragonSearch as its function. After checking for the validity of the session 
+   (token is not expired), user can search dragons by name or see all of of the cards. Requesnt sent ot /login end point of our API, will be checked by 
+   login lambda function in the backend for whether user is admin or no, which will be communicated to the front end. If the user is admin, then 
+   editing/creating previlages will be granted by the front end; dragon cards will be edittable. 
+
+   12 - From API console, create a new resource called "login" with a post method, and choose lambda as its integration type with the function 
+   LoginEdXDragonGame created in step 10. Front end first shows the login form whose result will be sent to /login endpoint of our api, handled by a 
+   lambda function and permission will be returned to the fornt end. Any search by user is directed to the root of the api handled by DragonSearch lambda 
+   function.
+  
+   13 - Run
+   		
+		create_mary_admin.py
+   to add the admin to users table. This is the only user with editing previleges. Editting requires more involved communication of back end and front 
+   update. So we create a new end point for editting in our api called "edit". 
 
 
 
