@@ -119,9 +119,30 @@ A lambda function can aslo be invoked using sam cli. But it is easier to test th
    14 - Create another endpoint called "create" that receives requests for creating new dragons. The post method is integrated into a lambda function 
    whose script is `create_dragon.py`.
   
- Now we should have a working website at url given by s3 bucket. The only point left is that we could have combined the three tables into one single 
- table. But before designing the single table, we need to think about the type of queries we might make. That's how dynamodb tables are desinged.  
-  
+Now we should have a working website at url given by s3 bucket. 
 
+Table desing we had so is only good for very basic queries. for more advanced queries (not used for this app here), we need to use more GSIs (Global 
+Secondary Index). To achieve this with more efficient design, we could have combined the three tables above into one single table with carefully defind 
+GSI. To do this, we need to think about the types of queries we might make. That's how dynamodb tables are desinged. For example, to find dragons that 
+spew acid or find all drangons of family green, find all dragons living in Arizona, USA or all with range < 5 in increasing order ... . To combine these 
+three tables, we can make a new table (improved single table) with PK as a hashing id, and SK to be 'stats', 'bonus', 'family', repeating for each record 
+with the same partition key (which is agaist relational databse design). Create a GSI for attribute associated with "spew acid": in this case "bonus 
+description". Another GSI should be for 'stats' that contains info about dragons (name, fmaily, damage, descritipin and location ...). So the query: "find 
+dragons that spew acid" can be done in two stages: 1- return all PK for dragons spew acids, 2- return dragon stats for all dragon with these PKs. 
 
+ 
+         PK (PK)         SK           Location                     <attributes>
+      <SAME- UUID>     stats  <Location_country_value>:        dragon_name: <value>,
+                                 <Location_state_value>          protection: <value>,
+				 <Location_city_value>:          damage: <value>
+				 <Location_neighborhood_value>   description: <value> 
+                                                                  family: <value>
+	
+	<SAME- UUID>    bonus                                    extra_damage: <value> , range: <value> , UUID> bonus_description: <value>
+	
+	  
+       <SAME- UUID>    family                                  breath_attack: <value>,damage_modifier: <value> ,
+                                                                 protection_modifier: <value> , family_description:<value>
+
+To create and seed the single table, run python scripts in folder single_table_desings_and_queries. Some query scripts (queries mentioned above) can also be find there.
 
