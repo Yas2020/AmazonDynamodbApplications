@@ -1,6 +1,8 @@
 AmazonDynamodbApplications:
 
-In this project, I build a simple CRUD application using Amazon API Gateway, Amazon Lambda and Amazon Dynamodb. This project is part of a course exercise I did on Coursera [here](https://www.coursera.org/learn/dynamodb-nosql-database-driven-apps/home/week/1), which was presented in JavaScript. 
+In this project, I build a simple CRUD application using Amazon API Gateway, Amazon Lambda and Amazon Dynamodb. This project is part of a course exercise 
+I did on Coursera [here](https://www.coursera.org/learn/dynamodb-nosql-database-driven-apps/home/week/1), which was presented in JavaScript. I wrote 
+lambda functions in python and extended the front-end (JavaScript and Jquery) for more functionality (creation of dragon etc). 
 
 The data is organized with a relational data structure of items called dragons of different types, having different features and modifiers. However we 
 want to use DynamoDB to store this data (4 JSON files), and thent to display data on cards on the website as part of an online game. Here is the structure 
