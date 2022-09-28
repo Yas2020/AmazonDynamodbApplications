@@ -85,7 +85,7 @@ Cloud9 (create a new python env and so on) for packaging at this stage as I coul
 deploy our lambda function to Lambda service. 
 
 		python3 create_and_publish_login.py
-or sma cli:
+or SAM CLI:
 
 	 	aws lambda create-function --function-name LoginEdXDragonGame \
 					   --runtime python3.9  \
@@ -107,10 +107,21 @@ A lambda function can aslo be invoked using sam cli. But it is easier to test th
    function.
   
    13 - Run
-   		
+   
 		create_mary_admin.py
-   to add the admin to users table. This is the only user with editing previleges. Editting requires more involved communication of back end and front 
-   update. So we create a new end point for editting in our api called "edit". 
+   to add the admin to users table. This is the only user with editing previleges. Editting requires more involved communication between back-end and 
+   front-end update. So we create a new end-point for editting in our api called "edit". Create a new lambda function called editDragon and paste the 
+   content of `edit.py` to it. This function take requests directed to /edit end-point as input event, implements the changes in the back-end and returns 
+   the new update. If the name of the dragon is changed, then that chnage should be done to the image file name of that dragon in S3. So this function 
+   needs writing and reading permission to S3 bucket. Updating an item attributes requires transcational change so deleting and putting new items are tied 
+   together; either both are done or none. This is called transaction. 
+   
+   14 - Create another endpoint called "create" that receives requests for creating new dragons. The post method is integrated into a lambda function 
+   whose script is `create_dragon.py`.
+  
+ Now we should have a working website at url given by s3 bucket. The only point left is that we could have combined the three tables into one single 
+ table. But before designing the single table, we need to think about the type of queries we might make. That's how dynamodb tables are desinged.  
+  
 
 
 
