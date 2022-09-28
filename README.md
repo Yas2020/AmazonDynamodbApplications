@@ -1,8 +1,10 @@
 AmazonDynamodbApplications:
 
-In the project, I build a simple CRUD application using Amazon API Gateway, Amazon Lambda and Amazon Dynamodb. 
+In this project, I build a simple CRUD application using Amazon API Gateway, Amazon Lambda and Amazon Dynamodb. This project is part of a course exercise I did on Coursera [here](https://www.coursera.org/learn/dynamodb-nosql-database-driven-apps/home/week/1), which was presented in JavaScript. 
 
-It is basically a relational data structure with dragons of different types, having different skills and modifiers. However we want to use DynamoDB to store this data (4 JSON files), and leverage that to display card data on the website as part of an online game. We need a script that can upload multiple items to multiple tables using batch processing. We decide to create a table for each JSON file:
+The data is organized with a relational data structure of items called dragons of different types, having different features and modifiers. However we 
+want to use DynamoDB to store this data (4 JSON files), and thent to display data on cards on the website as part of an online game. Here is the structure 
+of provided tables in json files:
 
    - Dragon Stats Table: using dragon name as the Primary Key (PK) as you will want to search for a dragon by name.
 
@@ -21,8 +23,8 @@ It is basically a relational data structure with dragons of different types, hav
 	breath_attack		 damage_modifier		description		family(PK) 	protection_modifier
 	    acid			-2		       Better defense             green                  2
 
-
-Load data: 
+We first try to load data in dynamodb. So we need a script that can upload multiple items to multiple tables using batch processing. Before getting 
+started, let's prepare the environment and the tools needed. We then move forward step by step from there: 
 	
    1 - Create a python environment :
    
@@ -52,7 +54,9 @@ to create tables concurrently, and then
 			seed_dragons.py 
 to batch-write itmes into tables using the provided json files.
 
-Before we deploy our first lambda fucntion, we create a user table and a session table so we allow only registered users to login or give special editing previlage to some users only, that is the admin in our case. Every time a user logs in, a token is generated and sent to the front end and also recorded in session table. This token expires in 20 mins. This is done by activating Time To Live feature for session table. So enable TTL for the session table:
+Before we deploy our first lambda fucntion, we create a user table and a session table so we allow only registered users to login or give special editing 
+previlage to some users only, that is the admin in our case. Every time a user logs in, a token is generated and sent to the front end and also recorded 
+in session table. This token expires in 20 mins. This is done by activating Time To Live feature for session table. So enable TTL for the session table:
 
    7 - Run
    
@@ -94,17 +98,27 @@ or SAM CLI:
 					   --publish \
 					   --zip-file fileb://path/to/login.zip
 A lambda function can aslo be invoked using sam cli. But it is easier to test the function on Lambda console for me.
-   
-   11 - Using Lambda console, create a new lambda function called DragonSearch and paste the content of `dragon_search.py`. At the root of our API, create 
-   a post method with lambda function as its integration type and choose DragonSearch as its function. After checking for the validity of the session 
-   (token is not expired), user can search dragons by name or see all of of the cards. Requesnt sent ot /login end point of our API, will be checked by 
-   login lambda function in the backend for whether user is admin or no, which will be communicated to the front end. If the user is admin, then 
-   editing/creating previlages will be granted by the front end; dragon cards will be edittable. 
 
-   12 - From API console, create a new resource called "login" with a post method, and choose lambda as its integration type with the function 
-   LoginEdXDragonGame created in step 10. Front end first shows the login form whose result will be sent to /login endpoint of our api, handled by a 
-   lambda function and permission will be returned to the fornt end. Any search by user is directed to the root of the api handled by DragonSearch lambda 
-   function.
+   11 - Using API Gateway console, create an api called DragonSearchAPI. Using Lambda console, create a new lambda function called DragonSearch, attach an 
+   appropriate role to it and paste the content of `dragon_search.py`. At the root of API, create 
+   a post method with lambda function as its integration type and choose DragonSearch as its function (keep Use Lambda Proxy integration unchecked for all 
+   methods we create here later on - also timout is to be 10000 (10 sec)). Remember that, every time you make chenges to API, make sure to deploy the api 
+   again. Also CORS should be enabled everytime because your website is hosted on one 
+   domain and your API on another. Your browser might block this of CORS is not enabled. After deploying, insert the url address into `config.js` to 
+   connect website to API.
+   
+   After checking for the validity of the session 
+   (token is not expired) done by DragonSearch, user can search dragons by name or see all of of the cards. This is to prevent unauthorized users to have 
+   access to data by calling api directly bypassing the website login protect, that comes in the next step.  
+   
+   12 - Before we let users login, we need to check for credentials. From API console, create a new resource called "login" with a post method, and choose 
+   lambda as its integration type with the function 
+   LoginEdXDragonGame created in step 10. Front end first shows users the login form (login page) whose result will be sent to /login endpoint of our api, 
+   handled by a lambda function and permission will be returned to the fornt end. Any search by user is directed to the root of the api handled by 
+   DragonSearch lambda function. Request sent to /login end point of our API will be checked by 
+   login lambda function LoginEdXDragonGame in the backend to see whether user is admin or no, and the result will be communicated to the front end. If 
+   the user is admin, then editing/creating previlages will be granted by the front end; dragon cards will be edittable. 
+
   
    13 - Run
    
@@ -117,16 +131,17 @@ A lambda function can aslo be invoked using sam cli. But it is easier to test th
    together; either both are done or none. This is called transaction. 
    
    14 - Create another endpoint called "create" that receives requests for creating new dragons. The post method is integrated into a lambda function 
-   whose script is `create_dragon.py`.
+   whose script is `create_dragon.py`. Front-end takes attributes of the new dragon including its image and send data to this end point. The request is 
+   handled by this lambda function. dragon attributes are recoded in dragon_stats table and its image is stored in s3 bucket. Front-end displays the new 
+   drgon without refreshing the page (happens in front-end). 
   
-Now we should have a working website at url given by s3 bucket. 
+Now we should have a working website at url given by s3 bucket that does creation, retreiveing and updating data. 
 
-Table desing we had so is only good for very basic queries. for more advanced queries (not used for this app here), we need to use more GSIs (Global 
-Secondary Index). To achieve this with more efficient design, we could have combined the three tables above into one single table with carefully defind 
+The table design we had so in dynamodb is only good for very basic queries. For more advanced queries (not used for this app here), we need to use more GSIs (Global Secondary Index). To achieve this with more efficient design, we could have combined the three tables above into one single table with carefully defind 
 GSI. To do this, we need to think about the types of queries we might make. That's how dynamodb tables are desinged. For example, to find dragons that 
 spew acid or find all drangons of family green, find all dragons living in Arizona, USA or all with range < 5 in increasing order ... . To combine these 
 three tables, we can make a new table (improved single table) with PK as a hashing id, and SK to be 'stats', 'bonus', 'family', repeating for each record 
-with the same partition key (which is agaist relational databse design). Create a GSI for attribute associated with "spew acid": in this case "bonus 
+with the same partition key (denormalization, which is agaist relational databse design). Create a GSI for attribute associated with "spew acid": in this case "bonus 
 description". Another GSI should be for 'stats' that contains info about dragons (name, fmaily, damage, descritipin and location ...). So the query: "find 
 dragons that spew acid" can be done in two stages: 1- return all PK for dragons spew acids, 2- return dragon stats for all dragon with these PKs. 
 
@@ -144,5 +159,10 @@ dragons that spew acid" can be done in two stages: 1- return all PK for dragons 
        <SAME- UUID>    family                                  breath_attack: <value>,damage_modifier: <value> ,
                                                                  protection_modifier: <value> , family_description:<value>
 
-To create and seed the single table, run python scripts in folder single_table_desings_and_queries. Some query scripts (queries mentioned above) can also be find there.
+To create and seed the single table, run python scripts in folder single_table_desings_and_queries. Some query scripts (queries mentioned above) can also 
+be find there.
+
+A few words about security and monitoring: Lamda functions need permissions to have access to dynamodb tables (or any other service). One should create an AIM role with minimal previlege (least privilege principle) required for each lambda function. One can activate X-Ray in API Gateway, CloudWatch for dynamodb are useful tools for monitoring of services and logs. Once should create fine-grained Access Control IAM policy conditions for Amazon DynamoDB and move lambda fucntions inside a VPC and also creare VPC gateway endpoint for dynamodb so that lambda and dynamodb dotnthave to communicate over public internet but instead inside a VPC. 
+
+
 
